@@ -1,0 +1,8 @@
+*.exe
+*.dll
+*.obj
+*.o
+*.a
+*.syso
+/tmp/
+*.log
