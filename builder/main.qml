@@ -711,7 +711,6 @@ ApplicationWindow {
                      : backend.geofence_langids_total + " langids"
 
                 GridLayout {
-                    id: geoGrid
                     Layout.fillWidth: true
                     columns: window.width > 1000 ? 2 : 1
                     columnSpacing: 16
@@ -976,7 +975,6 @@ ApplicationWindow {
             spacing: 12
 
             RowLayout {
-                id: headerRow
                 Layout.fillWidth: true
                 spacing: 9
                 visible: card.title !== ""
