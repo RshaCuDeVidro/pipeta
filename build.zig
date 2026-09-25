@@ -16,13 +16,5 @@ pub fn build(b: *std.Build) void {
     // Hide console
     exe.subsystem = .Windows;
     
-    exe.root_module.linkSystemLibrary("crypt32", .{});
-    exe.root_module.linkSystemLibrary("ws2_32", .{});
-    exe.root_module.addCSourceFile(.{
-        .file = b.path("deps/sqlite3.c"),
-        .flags = &[_][]const u8{ "-DSQLITE_THREADSAFE=0", "-DSQLITE_OMIT_LOAD_EXTENSION" },
-    });
-    exe.root_module.addIncludePath(b.path("deps"));
-
     b.installArtifact(exe);
 }

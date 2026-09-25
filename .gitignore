@@ -6,3 +6,11 @@
 *.syso
 /tmp/
 *.log
+/.zig-cache/
+/zig-out/
+*.pdb
+*.tmp
+.venv/
+__pycache__/
+*.pyc
+*.pyd
